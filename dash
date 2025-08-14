@@ -47,6 +47,7 @@ def try_parse_date(x):
         return pd.NaT
 
 def extract_merchant(text):
+    # VERSION: 2.0 - Fixed UPI and FT extraction
     if pd.isna(text):
         return ""
     s = str(text)
@@ -57,6 +58,7 @@ def extract_merchant(text):
         merchant = m.group(1).strip()
         # Avoid returning "UPI" itself
         if merchant.upper() != "UPI":
+            print(f"DEBUG: UPI merchant extracted: {merchant}")  # Debug line
             return merchant
 
     # Pattern 2: FT-REF-ACCOUNT - MERCHANT - DESCRIPTION (fund transfers)
