@@ -11,6 +11,8 @@ from dateutil import parser
 
 # Test the function immediately
 print("🔧 TESTING EXTRACT_MERCHANT FUNCTION ON STARTUP 🔧")
+print("🔧 THIS SHOULD APPEAR IMMEDIATELY WHEN THE FILE LOADS 🔧")
+st.write("🔧 DEBUG: File loaded successfully")
 
 st.set_page_config(page_title="UPI Financial Manager", layout="wide", initial_sidebar_state="expanded")
 
@@ -122,6 +124,7 @@ print(f"🔧 TEST RESULT: {test_result}")
 # Page layout
 # ---------------------------
 st.markdown("<div class='top-title'>UPI Financial Manager</div>", unsafe_allow_html=True)
+st.error("🚨 DEBUG: This is the UPDATED version of the app! 🚨")
 st.write("Upload bank / UPI statements (CSV, XLSX, TXT). Merchant extraction, editable categories, interactive charts and a pro-style UI.")
 
 with st.sidebar:
@@ -142,6 +145,7 @@ with st.sidebar:
 # Load data
 # ---------------------------
 if uploaded is not None:
+    st.success("🚨 FILE UPLOADED - DEBUGGING ENABLED 🚨")
     try:
         raw = read_uploaded_file(uploaded)
     except Exception as e:
