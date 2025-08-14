@@ -80,6 +80,73 @@ def extract_merchant(text):
             return part[:60]
     # fallback: return whole text truncated
     return s[:60]
+
+
+def read_uploaded_file(uploaded_file):
+    """Load CSV/XLSX/TXT into a pandas DataFrame with best-effort parsing.
+
+    - CSV: auto-detect delimiter
+    - XLS/XLSX: use pandas read_excel
+    - TXT: try CSV autodetect; if that fails, treat each non-empty line as a `Narration`
+    """
+    name = getattr(uploaded_file, "name", "uploaded").lower()
+    ext = name.split(".")[-1] if "." in name else ""
+
+    # Always be able to re-read the buffer if we try multiple strategies
+    def _reset(fp):
+        try:
+            fp.seek(0)
+        except Exception:
+            pass
+
+    if ext in {"csv"}:
+        _reset(uploaded_file)
+        try:
+            df = pd.read_csv(uploaded_file, sep=None, engine="python", dtype=str, on_bad_lines="skip")
+        except Exception:
+            _reset(uploaded_file)
+            df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines="skip")
+    elif ext in {"xlsx", "xls"}:
+        _reset(uploaded_file)
+        try:
+            df = pd.read_excel(uploaded_file, dtype=str)
+        except Exception:
+            # Some environments require explicit engine for xlsx
+            _reset(uploaded_file)
+            df = pd.read_excel(uploaded_file, dtype=str, engine="openpyxl")
+    elif ext in {"txt"}:
+        _reset(uploaded_file)
+        try:
+            df = pd.read_csv(uploaded_file, sep=None, engine="python", dtype=str, on_bad_lines="skip")
+        except Exception:
+            _reset(uploaded_file)
+            content = uploaded_file.read()
+            if isinstance(content, bytes):
+                content = content.decode("utf-8", errors="ignore")
+            lines = [line.strip() for line in str(content).splitlines() if line.strip()]
+            df = pd.DataFrame({"Narration": lines})
+    else:
+        # Fallback: try CSV autodetect first
+        _reset(uploaded_file)
+        try:
+            df = pd.read_csv(uploaded_file, sep=None, engine="python", dtype=str, on_bad_lines="skip")
+        except Exception:
+            _reset(uploaded_file)
+            content = uploaded_file.read()
+            if isinstance(content, bytes):
+                content = content.decode("utf-8", errors="ignore")
+            lines = [line.strip() for line in str(content).splitlines() if line.strip()]
+            df = pd.DataFrame({"Narration": lines})
+
+    # Clean up DataFrame
+    df = df.dropna(how="all")
+    df.columns = [str(c).strip() for c in df.columns]
+
+    # If single unnamed column, name it `Narration`
+    if df.shape[1] == 1 and (list(df.columns)[0].lower().startswith("unnamed") or list(df.columns)[0] == "0"):
+        df.columns = ["Narration"]
+
+    return df
 # ---------------------------
 # Page layout
 # ---------------------------
@@ -170,7 +237,7 @@ if uploaded is not None:
         if debit_col and credit_col:
             df["Debit"] = pd.to_numeric(df[debit_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
             df["Credit"] = pd.to_numeric(df[credit_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-            df["Amount"] = df["Credit"].replace(0, np.nan).fillna(df["Debit"])
+            df["Amount"] = df["Credit"].replace(0, np.nan).fillna(df["Debit"]) 
             # ensure positive
             df["Amount"] = df["Amount"].abs().fillna(0)
             df["Type"] = np.where(df["Credit"] > 0, "Credit", "Debit")
