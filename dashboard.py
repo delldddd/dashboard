@@ -73,7 +73,7 @@ def extract_merchant(text):
 
     # Pattern 1: UPI-MERCHANT_NAME-@BANK-REF-UPI (most common pattern)
     # Extract everything between UPI- and the first @ symbol
-    m = re.search(r"UPI[-/]([^-]*?)-[^@]*@", s, re.IGNORECASE)
+    m = re.search(r"UPI[-/](.*?)-[^@]*@", s, re.IGNORECASE)
     if m:
         merchant = m.group(1).strip()
         if merchant.upper() != "UPI" and len(merchant) > 2:
