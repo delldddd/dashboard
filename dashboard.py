@@ -71,23 +71,23 @@ def extract_merchant(text):
         return ""
     s = str(text)
 
-    # Enhanced patterns for UPI transactions
-    # Pattern 1: UPI-MERCHANT_NAME-@BANK-REF-UPI
-    m = re.search(r"UPI[-/]([^-@]+?)(?:-|@|\s|$)", s, re.IGNORECASE)
+    # Pattern 1: UPI-MERCHANT_NAME@BANK-REF-UPI (extract everything between UPI- and @)
+    m = re.search(r"UPI[-/]([^@]+?)(?:@|$)", s, re.IGNORECASE)
     if m:
         merchant = m.group(1).strip()
         if merchant.upper() != "UPI" and len(merchant) > 2:
             return merchant
 
     # Pattern 2: REV-UPI-REF-MERCHANT@BANK-REF-UPI (reversal transactions)
-    m_rev = re.search(r"REV-UPI-[^-]+-([^-@]+?)(?:-|@|\s|$)", s, re.IGNORECASE)
+    m_rev = re.search(r"REV-UPI-[^-]+-([^@]+?)(?:@|$)", s, re.IGNORECASE)
     if m_rev:
         merchant = m_rev.group(1).strip()
         if merchant.upper() != "UPI" and len(merchant) > 2:
             return merchant
 
     # Pattern 3: FT-REF-ACCOUNT - MERCHANT - DESCRIPTION (fund transfers)
-    m_ft = re.search(r"FT-[^-]+-[^-]+-\s*([^-]+?)(?:\s*-\s*[^-]*)?$", s, re.IGNORECASE)
+    # Extract everything after the third dash (account number) until the end
+    m_ft = re.search(r"FT-[^-]+-[^-]+-\s*(.+)$", s, re.IGNORECASE)
     if m_ft:
         merchant = m_ft.group(1).strip()
         if len(merchant) > 2:
