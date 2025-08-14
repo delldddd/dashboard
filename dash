@@ -9,6 +9,9 @@ import re
 from io import BytesIO
 from dateutil import parser
 
+# Test the function immediately
+print("🔧 TESTING EXTRACT_MERCHANT FUNCTION ON STARTUP 🔧")
+
 st.set_page_config(page_title="UPI Financial Manager", layout="wide", initial_sidebar_state="expanded")
 
 # ---------------------------
@@ -48,11 +51,12 @@ def try_parse_date(x):
 
 def extract_merchant(text):
     # VERSION: 3.0 - Complete rewrite with explicit patterns
+    print("🚨 EXTRACT_MERCHANT FUNCTION CALLED 🚨")
     if pd.isna(text):
         return ""
     s = str(text)
     
-    print(f"DEBUG: Processing text: {s}")
+    print(f"🚨 DEBUG: Processing text: {s}")
 
     # Pattern 1: UPI transactions - extract everything between UPI- and @
     if s.upper().startswith("UPI-") or s.upper().startswith("UPI/"):
@@ -109,6 +113,11 @@ def extract_merchant(text):
     # Fallback: return the whole text (truncated) without splitting on dashes
     print(f"DEBUG: Using fallback, returning: {s[:60]}")
     return s[:60]
+
+# Test the function
+test_result = extract_merchant("UPI-MRS LALITA SUNIL DUR-DURGOLI.LALITA-4@OKAXIS-CBIN0282611-545972301668-UPI")
+print(f"🔧 TEST RESULT: {test_result}")
+
 # ---------------------------
 # Page layout
 # ---------------------------
@@ -182,12 +191,18 @@ if uploaded is not None:
         df["Date"] = parsed
 
     # Merchant column
+    print(f"🔧 NARRATION COLUMN: {narration_col}")
     if narration_col:
+        print(f"🔧 APPLYING EXTRACT_MERCHANT TO COLUMN: {narration_col}")
+        print(f"🔧 SAMPLE DATA: {df[narration_col].head(3).tolist()}")
         df["Merchant"] = df[narration_col].apply(extract_merchant)
     else:
         # fallback: try to find meaningful text column
         text_cols = [c for c in df.columns if df[c].dtype == object]
+        print(f"🔧 FALLBACK TEXT COLS: {text_cols}")
         if text_cols:
+            print(f"🔧 APPLYING EXTRACT_MERCHANT TO COLUMN: {text_cols[0]}")
+            print(f"🔧 SAMPLE DATA: {df[text_cols[0]].head(3).tolist()}")
             df["Merchant"] = df[text_cols[0]].apply(extract_merchant)
         else:
             df["Merchant"] = ""
