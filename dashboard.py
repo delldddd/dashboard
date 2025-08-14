@@ -11,9 +11,6 @@ from dateutil import parser
 
 st.set_page_config(page_title="UPI Financial Manager", layout="wide", initial_sidebar_state="expanded")
 
-# ---------------------------
-# Custom CSS for modern look
-# ---------------------------
 st.markdown(
     """
     <style>
@@ -29,9 +26,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------------------------
-# Helper utilities
-# ---------------------------
+
 def read_uploaded_file(uploaded_file):
     """Read uploaded file based on its type"""
     try:
@@ -40,7 +35,7 @@ def read_uploaded_file(uploaded_file):
         elif uploaded_file.name.endswith(('.xlsx', '.xls')):
             return pd.read_excel(uploaded_file)
         elif uploaded_file.name.endswith('.txt'):
-            # Try to read as CSV first, if that fails, read as space/tab separated
+            
             try:
                 return pd.read_csv(uploaded_file, sep=None, engine='python')
             except:
@@ -61,7 +56,6 @@ def try_parse_date(x):
         s = str(x).strip()
         if s == "":
             return pd.NaT
-        # let dateutil handle many formats
         return parser.parse(s, dayfirst=False, fuzzy=True)
     except Exception:
         return pd.NaT
@@ -71,34 +65,31 @@ def extract_merchant(text):
         return ""
     s = str(text)
 
-    # Pattern 1: UPI-MERCHANT_NAME@BANK-REF-UPI (extract everything between UPI- and @)
     m = re.search(r"UPI[-/]([^@]+?)(?:@|$)", s, re.IGNORECASE)
     if m:
         merchant = m.group(1).strip()
         if merchant.upper() != "UPI" and len(merchant) > 2:
             return merchant
 
-    # Pattern 2: REV-UPI-REF-MERCHANT@BANK-REF-UPI (reversal transactions)
+    
     m_rev = re.search(r"REV-UPI-[^-]+-([^@]+?)(?:@|$)", s, re.IGNORECASE)
     if m_rev:
         merchant = m_rev.group(1).strip()
         if merchant.upper() != "UPI" and len(merchant) > 2:
             return merchant
 
-    # Pattern 3: FT-REF-ACCOUNT - MERCHANT - DESCRIPTION (fund transfers)
-    # Extract everything after the third dash (account number) until the end
     m_ft = re.search(r"FT-[^-]+-[^-]+-\s*(.+)$", s, re.IGNORECASE)
     if m_ft:
         merchant = m_ft.group(1).strip()
         if len(merchant) > 2:
             return merchant
 
-    # Pattern 4: Extract merchant from @upi format
+  
     m_atupi = re.search(r"@upi[:\s]*([A-Za-z0-9._-]+)", s, re.IGNORECASE)
     if m_atupi:
         return m_atupi.group(1).strip()
 
-    # Pattern 5: Extract from "to:" or "from:" patterns
+ 
     m_to = re.search(r"to:?\s*([A-Za-z0-9 &._@-]{3,})", s, re.IGNORECASE)
     if m_to:
         return m_to.group(1).strip()
@@ -106,8 +97,7 @@ def extract_merchant(text):
     m_from = re.search(r"from:?\s*([A-Za-z0-9 &._@-]{3,})", s, re.IGNORECASE)
     if m_from:
         return m_from.group(1).strip()
-
-    # Fallback: pick first meaningful chunk before comma, pipe, colon, or dash
+        
     parts = re.split(r"[,|:-]", s)
     for part in parts:
         part = part.strip()
@@ -116,14 +106,12 @@ def extract_merchant(text):
             len(part) > 2):
             return part[:60]
     
-    # Final fallback: return whole text truncated
+    
     return s[:60]
 
-# ---------------------------
-# Page layout
-# ---------------------------
+
 st.markdown("<div class='top-title'>UPI Financial Manager</div>", unsafe_allow_html=True)
-st.write("Upload bank / UPI statements (CSV, XLSX, TXT). Merchant extraction, editable categories, interactive charts and a pro-style UI.")
+st.write("Upload bank / UPI statements (CSV, XLSX, TXT).")
 
 with st.sidebar:
     st.header("Upload & Filters")
@@ -139,9 +127,7 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Tip: You can edit Category directly in the table. Use the download button to export your changes.")
 
-# ---------------------------
-# Load data
-# ---------------------------
+
 if uploaded is not None:
     try:
         raw = read_uploaded_file(uploaded)
@@ -154,24 +140,24 @@ if uploaded is not None:
     st.subheader("Raw preview")
     st.dataframe(raw.head(6), use_container_width=True)
 
-    # Attempt to find typical columns
+   
     cols_lower = [c.lower() for c in raw.columns]
 
-    # Date extraction
+    
     date_col = None
     for c in raw.columns:
         if re.search(r"date|txn date|value date", c, re.IGNORECASE):
             date_col = c
             break
 
-    # Narration/description column detection
+   
     narration_col = None
     for c in raw.columns:
         if re.search(r"narration|description|remarks|particulars|details", c, re.IGNORECASE):
             narration_col = c
             break
 
-    # Amount detection (choose first 'amount' like column or debit/credit columns)
+   
     amount_col = None
     debit_col = None
     credit_col = None
@@ -185,15 +171,15 @@ if uploaded is not None:
 
     df = raw.copy()
 
-    # Normalize / create Date column
+  
     if date_col:
         df["Date"] = df[date_col].apply(try_parse_date)
     else:
-        # try to parse from any column containing date-like strings
+        
         parsed = pd.Series([try_parse_date(x) for x in df.apply(lambda row: " ".join(map(str, row.values)), axis=1)])
         df["Date"] = parsed
 
-    # Merchant column
+   
     if narration_col:
         df["Merchant"] = df[narration_col].apply(extract_merchant)
     else:
@@ -204,7 +190,6 @@ if uploaded is not None:
         else:
             df["Merchant"] = ""
 
-    # Amount / Type handling
     if amount_col:
         df["Amount"] = pd.to_numeric(df[amount_col].astype(str).str.replace(',', '').str.replace('INR', '').str.replace('Rs.', ''), errors='coerce').fillna(0)
         # If there are explicit Debit/Credit columns, prefer them
@@ -221,18 +206,18 @@ if uploaded is not None:
             df["Type"] = np.where(example_col.str.contains(r"-"), "Debit", "Credit")
             df["Amount"] = df["Amount"].abs()
     else:
-        # if separate columns exist, try to combine them
+      
         df["Amount"] = 0
         df["Type"] = "Debit"
 
-    # Add Category if missing
+    
     if "Category" not in df.columns:
         df["Category"] = ""
 
-    # Standardize Date string for presentation
+   
     df["Date_display"] = df["Date"].dt.date
 
-    # Basic filtering based on sidebar inputs
+   
     working = df.copy()
     # date filters
     if date_min:
@@ -240,7 +225,6 @@ if uploaded is not None:
     if date_max:
         working = working[working["Date"].dt.date <= date_max]
 
-    # search filter
     if global_search:
         s = global_search.lower()
         mask = (
@@ -251,7 +235,6 @@ if uploaded is not None:
         )
         working = working[mask]
 
-    # Reorder columns for display
     display_cols = ["Date_display", "Merchant", "Amount", "Type", "Category"]
     for c in display_cols:
         if c not in working.columns:
@@ -259,9 +242,6 @@ if uploaded is not None:
 
     display_df = working[display_cols].rename(columns={"Date_display": "Date"})
 
-    # ---------------------------
-    # AG Grid for interactive table
-    # ---------------------------
     st.subheader("Transactions")
 
     gb = GridOptionsBuilder.from_dataframe(display_df)
@@ -288,7 +268,6 @@ if uploaded is not None:
 
     edited = grid_response["data"]
 
-    # show small KPIs
     total_spent = edited.loc[edited["Type"] == "Debit", "Amount"].sum()
     total_credit = edited.loc[edited["Type"] == "Credit", "Amount"].sum()
     balance = total_credit - total_spent
@@ -301,9 +280,7 @@ if uploaded is not None:
     with k3:
         st.markdown("<div class='card'><div class='kpi'>Net</div><div class='kpi-value'>₹ {:,.2f}</div></div>".format(balance), unsafe_allow_html=True)
 
-    # ---------------------------
-    # Charts (Plotly)
-    # ---------------------------
+ 
     st.subheader("Insights & Charts")
 
     col_a, col_b = st.columns((2, 1))
@@ -321,7 +298,6 @@ if uploaded is not None:
             else:
                 st.info("No time-series data to plot.")
 
-        # Top merchants bar
         top_merchants = edited.groupby("Merchant")["Amount"].sum().sort_values(ascending=False).head(15).reset_index()
         if not top_merchants.empty:
             fig_bar = px.bar(top_merchants, x="Merchant", y="Amount", title="Top merchants by value",
@@ -342,9 +318,7 @@ if uploaded is not None:
         st.markdown("**Largest transactions**")
         st.dataframe(edited.sort_values("Amount", ascending=False).head(6).style.format({"Amount": "₹{:,.2f}"}), use_container_width=True)
 
-    # ---------------------------
-    # Export edited data
-    # ---------------------------
+
     def to_excel_bytes(df_export: pd.DataFrame):
         buffer = BytesIO()
         with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
