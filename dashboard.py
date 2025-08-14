@@ -225,8 +225,20 @@ if uploaded is not None:
             df["Amount"] = df["Amount"].abs()
     else:
         # if separate columns exist, try to combine them
-        df["Amount"] = 0
-        df["Type"] = "Debit"
+        if debit_col or credit_col:
+            if debit_col:
+                df["Debit"] = pd.to_numeric(df[debit_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            else:
+                df["Debit"] = 0
+            if credit_col:
+                df["Credit"] = pd.to_numeric(df[credit_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            else:
+                df["Credit"] = 0
+            df["Amount"] = df["Credit"].replace(0, np.nan).fillna(df["Debit"]).abs().fillna(0)
+            df["Type"] = np.where(df["Credit"] > 0, "Credit", "Debit")
+        else:
+            df["Amount"] = 0
+            df["Type"] = "Debit"
 
     # Add Category if missing
     if "Category" not in df.columns:
