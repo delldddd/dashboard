@@ -80,8 +80,8 @@ def extract_merchant(text):
     if m_atupi:
         return m_atupi.group(1).strip()
 
-    # fallback: pick first chunk before comma, pipe, colon, or dash
-    parts = re.split(r"[,|:-]", s)
+    # fallback: pick first chunk before comma, pipe, or colon (do not split on dash)
+    parts = re.split(r"[,|:]", s)
     for part in parts:
         part = part.strip()
         if part.upper() != "UPI" and part != "":
