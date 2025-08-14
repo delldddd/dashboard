@@ -51,12 +51,20 @@ def extract_merchant(text):
         return ""
     s = str(text)
 
-    # First try this pattern: after UPI- or UPI/, grab next part until next dash or @ or space
-    m = re.search(r"UPI[-/](.+?)(?:-|@|\s|$)", s, re.IGNORECASE)
+    # Pattern 1: UPI-MERCHANT_NAME@BANK-REF-UPI (extract everything between UPI- and @)
+    m = re.search(r"UPI[-/]([^@]+?)(?:@|$)", s, re.IGNORECASE)
     if m:
         merchant = m.group(1).strip()
         # Avoid returning "UPI" itself
         if merchant.upper() != "UPI":
+            return merchant
+
+    # Pattern 2: FT-REF-ACCOUNT - MERCHANT - DESCRIPTION (fund transfers)
+    # Extract everything after the third dash (account number) until the end
+    m_ft = re.search(r"FT-[^-]+-[^-]+-\s*(.+)$", s, re.IGNORECASE)
+    if m_ft:
+        merchant = m_ft.group(1).strip()
+        if len(merchant) > 2:
             return merchant
 
     # Try other patterns
